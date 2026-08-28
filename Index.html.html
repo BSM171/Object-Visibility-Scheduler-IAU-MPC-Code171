@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flarestar Observatory — Visibility &amp; Scheduling Console</title>
+<style>
+  :root{
+    --bg:#0A0E17;
+    --panel:#111A2C;
+    --panel-2:#0D1523;
+    --line:#233052;
+    --line-soft:#1A2440;
+    --text:#E7ECF6;
+    --muted:#8592AD;
+    --muted-2:#5C6785;
+    --gold:#E3B341;
+    --cyan:#52C7C0;
+    --teal-dim:#2E5A58;
+    --coral:#E2685A;
+    --p2:#C9A5E8;
+    --p4:#6E8EBF;
+    --p5:#4A5578;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{padding:28px 28px 60px;}
+  .wrap{max-width:1320px;margin:0 auto;}
+
+  /* header */
+  .topbar{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:22px;}
+  .brand-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--cyan);text-transform:uppercase;}
+  .brand-title{font-size:22px;font-weight:650;margin:4px 0 2px;letter-spacing:-.01em;}
+  .brand-sub{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .topbar-right{font-family:var(--mono);font-size:11px;color:var(--muted-2);text-align:right;}
+
+  /* layout */
+  .grid{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;}
+  .grid > div{min-width:0;} /* grid items default to min-width:auto, which let wide children force the track wider than 360px and overlap the results column */
+  @media (max-width:980px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px;max-width:100%;}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 14px;font-weight:650;
+    display:flex;align-items:center;justify-content:space-between;}
+  .panel h2 .hint{font-size:10px;text-transform:none;letter-spacing:0;color:var(--muted-2);font-weight:400;}
+
+  label{display:block;font-size:11px;color:var(--muted);margin:10px 0 4px;font-family:var(--mono);}
+  label:first-child{margin-top:0;}
+  input,select,textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    color:var(--text);padding:7px 9px;font-family:var(--mono);font-size:13px;outline:none;}
+  input:focus,select:focus,textarea:focus{border-color:var(--cyan);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .check-row{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:var(--muted);}
+  .check-row input[type=checkbox]{width:auto;accent-color:var(--cyan);}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+  button{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:13px;border-radius:7px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);padding:9px 14px;transition:border-color .15s,background .15s;}
+  button:hover{border-color:var(--cyan);}
+  .btn-primary{background:var(--cyan);color:#06231F;border-color:var(--cyan);}
+  .btn-primary:hover{background:#67D6CF;}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--line);font-weight:500;}
+  .btn-ghost:hover{color:var(--text);}
+  .btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .btn-small{padding:4px 9px;font-size:11px;border-radius:5px;}
+
+  /* target queue — card layout (not a table): each target gets its own name
+     row, a coordinates row below it, and a controls row, so nothing has to
+     compete for horizontal space and nothing gets clipped */
+  #queueContainer{max-width:100%;}
+  .queue-empty{color:var(--muted-2);font-size:12px;padding:14px 4px;text-align:center;border:1px dashed var(--line);border-radius:8px;}
+  .qcard{padding:9px 2px;border-bottom:1px solid var(--line-soft);}
+  .qcard:last-child{border-bottom:none;}
+  .qcard.row-inactive{opacity:.5;}
+  .qcard-row1{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .qcard-name{font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+  .qcard-coords{font-family:var(--mono);font-size:11px;color:var(--muted-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .qcard-row3{display:flex;align-items:center;gap:7px;margin-top:7px;}
+  .qcard-row3 select.inline-p{width:68px;flex-shrink:0;padding:4px 5px;font-size:12px;}
+  .qcard-row3 input.inline-num{width:60px;flex-shrink:0;padding:4px 5px;font-size:12px;}
+  .qcard-row3 input.inline-fixed{width:110px;flex-shrink:0;padding:4px 5px;font-size:12px;font-family:var(--mono);}
+  .qcard-durlabel{font-size:10.5px;color:var(--muted-2);flex-shrink:0;font-family:var(--mono);}
+  .p-chip{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;}
+  .p1{background:rgba(227,179,65,.18);color:var(--gold);}
+  .p2{background:rgba(201,165,232,.18);color:var(--p2);}
+  .p3{background:rgba(82,199,192,.18);color:var(--cyan);}
+  .p4{background:rgba(110,142,191,.18);color:var(--p4);}
+  .p5{background:rgba(90,101,136,.25);color:#9AA6C4;}
+  .p0{background:transparent;color:var(--muted-2);border:1px dashed var(--line);}
+  .flex-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:rgba(227,179,65,.15);color:var(--gold);border:1px dashed var(--gold);}
+  .del-btn{background:none;border:none;color:var(--muted-2);cursor:pointer;font-size:15px;padding:2px 6px;flex-shrink:0;line-height:1;}
+  .del-btn:hover{color:var(--coral);}
+
+  /* results tables (schedule, priority reference) — wide column, plenty of room */
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+     padding:6px 8px;border-bottom:1px solid var(--line);}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+
+  /* summary strip */
+  .summary-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:18px;}
+  .summary-cell{background:var(--panel);padding:13px 16px;border-right:1px solid var(--line);}
+  .summary-cell:last-child{border-right:none;}
+  .summary-cell .label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px;font-family:var(--mono);}
+  .summary-cell .value{font-family:var(--mono);font-size:16px;font-weight:600;}
+  .summary-cell .sub{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);margin-top:2px;}
+  @media (max-width:980px){ .summary-strip{grid-template-columns:repeat(2,1fr);} }
+
+  /* schedule table */
+  .status-ok{color:var(--cyan);font-weight:700;}
+  .status-bad{color:var(--coral);font-weight:700;}
+  .sched-name{font-weight:600;}
+  .sched-sub{color:var(--muted-2);font-size:11px;}
+
+  /* chart */
+  .chart-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .chart-toolbar label{margin:0;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .legend span.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+
+  .warn-box{border:1px solid rgba(226,104,90,.35);background:rgba(226,104,90,.06);border-radius:8px;padding:12px 14px;margin-top:14px;}
+  .warn-box .wtitle{color:var(--coral);font-weight:700;font-size:12px;margin-bottom:6px;font-family:var(--mono);}
+  .warn-item{font-size:12.5px;margin:5px 0;padding-left:10px;border-left:2px solid var(--coral);}
+  .warn-item b{color:var(--text);}
+
+  .footnote{font-size:11.5px;color:var(--muted-2);line-height:1.6;margin-top:6px;}
+  .status-msg{font-size:12px;color:var(--muted-2);font-family:var(--mono);min-height:16px;margin-top:8px;}
+  .bulk-help{font-size:10.5px;color:var(--muted-2);margin-top:4px;line-height:1.5;}
+  details summary{cursor:pointer;font-size:11.5px;color:var(--muted);font-family:var(--mono);}
+  details[open] summary{color:var(--cyan);margin-bottom:6px;}
+  #printArea{display:none;}
+  .app-footer{margin-top:8px;padding-top:14px;border-top:1px solid var(--line-soft);
+    font-family:var(--mono);font-size:10px;color:var(--muted-2);text-align:center;letter-spacing:.03em;}
+  @media print{
+    html, body{background:#fff !important;}
+    .wrap{display:none !important;}
+    #printArea{display:block !important; position:static; width:100%;
+      background:#fff; color:#000; padding:16px; font-family:ui-monospace,monospace;}
+    #printArea h1{font-size:16px;margin:0 0 4px;color:#000;}
+    #printArea h2{font-size:13px;margin:18px 0 8px;color:#000;}
+    #printArea p{font-size:11px;color:#333;margin:0 0 14px;}
+    #printArea table{width:100%;border-collapse:collapse;font-size:10.5px;}
+    #printArea th{text-align:left;border-bottom:1px solid #000;padding:4px 6px;color:#000;}
+    #printArea td{padding:4px 6px;border-bottom:1px solid #ccc;color:#000;}
+    #printArea svg{max-width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <div class="brand-eyebrow">Flarestar Observatory · MPC 171</div>
+      <div class="brand-title">Visibility &amp; Scheduling Console</div>
+      <div class="brand-sub">Meridian-safe, back-to-back time-sector allocation for a single observing night · all times GMT (UT)</div>
+    </div>
+    <div class="topbar-right">San Ġwann, Malta<br>Flarestar Observatory</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="panel">
+        <h2>Session configuration</h2>
+        <label>Observing date (UT calendar day)</label>
+        <input type="date" id="cfgDate">
+
+        <div class="row2">
+          <div>
+            <label>Latitude (°N)</label>
+            <input type="number" id="cfgLat" step="0.0001" value="35.9046">
+          </div>
+          <div>
+            <label>Longitude (°E)</label>
+            <input type="number" id="cfgLon" step="0.0001" value="14.4681">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label>Min. altitude (°)</label>
+            <input type="number" id="cfgMinAlt" step="1" value="30">
+          </div>
+          <div>
+            <label>Night bounded by</label>
+            <select id="cfgTwilight">
+              <option value="nautical" selected>Nautical (−12°)</option>
+              <option value="astro">Astronomical (−18°)</option>
+              <option value="civil">Civil (−6°)</option>
+            </select>
+          </div>
+        </div>
+        <div class="footnote">Coordinates default to San Ġwann — adjust to your registered MPC&nbsp;171 site position if different. All times in this tool are GMT (UT); the date above is the UT calendar day on which dusk falls (Malta is UT+1/+2 CET/CEST — subtract that offset yourself if you need local clock time).</div>
+      </div>
+
+      <div class="panel">
+        <h2>Add target</h2>
+        <label>Name / designation</label>
+        <input type="text" id="tName" placeholder="e.g. RS CVn / 2025 AB12">
+        <div class="row2">
+          <div>
+            <label>RA (hh:mm:ss or decimal h)</label>
+            <input type="text" id="tRA" placeholder="18:36:56">
+          </div>
+          <div>
+            <label>Dec (±dd:mm:ss or decimal °)</label>
+            <input type="text" id="tDec" placeholder="+38:47:01">
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Priority (1 = highest)</label>
+            <select id="tPriority">
+              <option value="1">1 — Critical</option>
+              <option value="2">2 — High</option>
+              <option value="3" selected>3 — Medium</option>
+              <option value="4">4 — Low</option>
+              <option value="5">5 — Filler</option>
+              <option value="0">0 — Inactive (excluded)</option>
+            </select>
+          </div>
+          <div>
+            <label>Required duration (min)</label>
+            <input type="number" id="tDuration" step="5" value="60">
+          </div>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="tFixedEnable">
+          <label for="tFixedEnable" style="margin:0;">Fixed-time event (e.g. predicted occultation) — immovable, ignores the meridian rule <b style="color:var(--coral);">and can end up below your min-altitude limit</b>, since the time can't be adjusted to compensate</label>
+        </div>
+        <div class="row2" id="tFixedTimeRow" style="display:none;">
+          <div>
+            <label>Fixed start time (UT, HH:MM)</label>
+            <input type="text" id="tFixedTime" placeholder="01:30">
+          </div>
+        </div>
+        <div id="tFixedAltWarn" class="bulk-help" style="display:none;color:var(--coral);"></div>
+        <div class="btn-row">
+          <button class="btn-primary" id="btnAddTarget">+ Add to queue</button>
+        </div>
+
+        <details style="margin-top:14px;">
+          <summary>Bulk import (paste, file, or link)</summary>
+          <div class="bulk-help">If a header row (Name, RA, Dec, Priority, Duration — any order) appears within the first few lines, columns are matched by name — a title row above it (e.g. a spreadsheet export banner) is fine and gets skipped automatically. Any extra column you add — "Remarks", "Comments", "Notes" — is ignored wherever it sits; put your own reference notes there freely. Add a "FixedStart" column (HH:MM, UT) to mark a row as a fixed-time event. Without a recognizable header anywhere near the top, the first five comma/tab-separated values per line are used positionally: Name, RA, Dec, Priority, Duration(min). Priority 1 (highest) – 5 (filler), 0 = Inactive.</div>
+          <textarea id="bulkText" rows="4" style="margin-top:6px;" placeholder="RS CVn A, 18:36:56, +38:47:01, 1, 90&#10;2025 AB12, 20:14:02, -05:10:00, 2, 120"></textarea>
+          <div class="btn-row">
+            <button class="btn-small" id="btnBulkAdd">Parse &amp; add pasted text</button>
+          </div>
+          <label>Load a file from this computer (.csv / .tsv / .txt)</label>
+          <input type="file" id="bulkFile" accept=".csv,.tsv,.txt,text/csv,text/plain">
+          <label>Or load from a public Google Sheets link</label>
+          <input type="text" id="bulkLink" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
+          <div class="btn-row">
+            <button class="btn-small" id="btnLoadLink">Fetch &amp; add from link</button>
+          </div>
+          <div class="bulk-help">The link must be shared/published as "anyone with the link can view" — this fetches it as CSV directly in your browser. If your browser blocks the request (CORS), use File&nbsp;&rarr;&nbsp;Share&nbsp;&rarr;&nbsp;Publish&nbsp;to&nbsp;web&nbsp;&rarr;&nbsp;CSV in Google Sheets and paste that link instead, or use the file picker above, which always works offline.</div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <h2>Target queue <span class="hint" id="queueCount"></span></h2>
+        <div id="queueContainer"><div class="queue-empty">No targets yet — add one above.</div></div>
+        <div class="btn-row">
+          <button class="btn-primary" id="btnGenerate" style="flex:1;">Generate schedule</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn-ghost btn-small" id="btnClearQueue">Clear queue</button>
+          <button class="btn-ghost btn-small" id="btnExportCsv">Export schedule CSV</button>
+          <button class="btn-ghost btn-small" id="btnPrint">Print schedule</button>
+          <button class="btn-ghost btn-small" id="btnDownloadPrintable">Download printable (PDF-ready)</button>
+        </div>
+        <div class="status-msg" id="statusMsg"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div id="resultsColumn">
+      <div class="panel">
+        <div style="color:var(--muted-2);font-family:var(--mono);font-size:13px;padding:30px 6px;text-align:center;">
+          Add targets and click <b style="color:var(--text)">Generate schedule</b> to compute tonight's visibility windows and time-sector allocation.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="app-footer">Flarestar Visibility &amp; Scheduling Console · <span id="appVersionTag">v1.16</span> · &copy; Flarestar Observatory. All rights reserved.</div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+/* =========================================================================
+   ASTRONOMY CORE
+   Formulas: low-precision solar position & GMST after Meeus, "Astronomical
+   Algorithms" (2nd ed., Willmann-Bell, 1998), Ch. 12 & 25 (accurate to
+   ~0.01° over the modern era). Equatorial->horizontal transform after
+   Duffett-Smith & Zwart, "Practical Astronomy with your Calculator or
+   Spreadsheet" (4th ed., Cambridge University Press, 2011). Airmass after
+   Kasten, F. & Young, A.T. (1989), Applied Optics 28(22):4735-4738,
+   doi:10.1364/AO.28.004735. Validated against Meeus's own worked example
+   (1992 Oct 13) and USNO reference GMST values during development.
+   ========================================================================= */
+
+const APP_VERSION = 'v1.16'; // bump this (and the #appVersionTag text above) with every amendment
+
+function toJD(y, m, d, utHours) {
+  if (m <= 2) { y -= 1; m += 12; }
+  const a = Math.floor(y / 100);
+  const b = 2 - a + Math.floor(a / 4);
+  const jd0 = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + b - 1524.5;
+  return jd0 + utHours / 24.0;
+}
+function gmstDeg(jd) {
+  const T = (jd - 2451545.0) / 36525.0;
+  let g = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933*T*T - (T*T*T)/38710000.0;
+  g = g % 360.0; if (g < 0) g += 360.0;
+  return g;
+}
+function sunEquatorial(jd) {
+  const T = (jd - 2451545.0) / 36525.0;
+  const rad = Math.PI/180;
+  let L0 = (280.46646 + 36000.76983*T + 0.0003032*T*T) % 360; if (L0<0) L0+=360;
+  let M  = (357.52911 + 35999.05029*T - 0.0001537*T*T) % 360; if (M<0) M+=360;
+  const Mr = M*rad;
+  const C = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(Mr)
+          + (0.019993 - 0.000101*T)*Math.sin(2*Mr)
+          + 0.000289*Math.sin(3*Mr);
+  const trueLong = L0 + C;
+  const Omega = 125.04 - 1934.136*T;
+  const appLong = trueLong - 0.00569 - 0.00478*Math.sin(Omega*rad);
+  const eps0 = 23 + 26/60 + 21.448/3600 - (46.8150*T + 0.00059*T*T - 0.001813*T*T*T)/3600;
+  const eps = eps0 + 0.00256*Math.cos(Omega*rad);
+  const appLongR = appLong*rad, epsR = eps*rad;
+  let raDeg = Math.atan2(Math.cos(epsR)*Math.sin(appLongR), Math.cos(appLongR))/rad;
+  raDeg = raDeg % 360; if (raDeg<0) raDeg+=360;
+  const decDeg = Math.asin(Math.sin(epsR)*Math.sin(appLongR))/rad;
+  return {raDeg, decDeg, eclipticLon: appLong};
+}
+function lstDeg(jd, lonDeg){ let l=(gmstDeg(jd)+lonDeg)%360; if(l<0) l+=360; return l; }
+function altitudeDeg(latDeg, decDeg, haDeg){
+  const rad=Math.PI/180, lat=latDeg*rad, dec=decDeg*rad, ha=haDeg*rad;
+  const s = Math.sin(dec)*Math.sin(lat) + Math.cos(dec)*Math.cos(lat)*Math.cos(ha);
+  return Math.asin(Math.max(-1,Math.min(1,s)))/rad;
+}
+function raDecAltitude(jd, latDeg, lonDeg, raDeg, decDeg){
+  const lst = lstDeg(jd, lonDeg);
+  let ha = lst - raDeg;
+  ha = ((ha+180)%360+360)%360 - 180;
+  return altitudeDeg(latDeg, decDeg, ha);
+}
+function azimuthDeg(latDeg, decDeg, haDeg, altDeg){
+  const rad=Math.PI/180, lat=latDeg*rad, dec=decDeg*rad, ha=haDeg*rad, alt=altDeg*rad;
+  const sinA = -Math.sin(ha)*Math.cos(dec)/Math.cos(alt);
+  const cosA = (Math.sin(dec)-Math.sin(alt)*Math.sin(lat))/(Math.cos(alt)*Math.cos(lat));
+  let az = Math.atan2(sinA,cosA)/rad; if(az<0) az+=360;
+  return az;
+}
+function airmassKY(altDeg){
+  if (altDeg<=0) return NaN;
+  const z=90-altDeg, rad=Math.PI/180;
+  return 1/(Math.cos(z*rad)+0.50572*Math.pow((96.07995-z),-1.6364));
+}
+/* Low-precision lunar position (truncated ELP2000-type series, main
+   periodic terms only — Meeus, Astronomical Algorithms 2nd ed., Ch. 47).
+   Validated against Meeus's own worked example (1992 Apr 12, 0h):
+   full-series λ=133.1627°, β=-3.2291° vs this truncated series'
+   133.150°/-3.229° — agreement to ~0.02°, ~1 arcmin, comfortably
+   sufficient for chart visualization and target/Moon separation, though
+   not for occultation-grade timing. */
+function moonEquatorial(jd){
+  const T = (jd - 2451545.0) / 36525.0;
+  const rad = Math.PI/180;
+  const n360 = d => { d = d % 360; return d < 0 ? d + 360 : d; };
+  const Lp = n360(218.3164477 + 481267.88123421*T);
+  const D  = n360(297.8501921 + 445267.1114034*T);
+  const M  = n360(357.5291092 + 35999.0502909*T);
+  const Mp = n360(134.9633964 + 477198.8675055*T);
+  const F  = n360(93.2720950  + 483202.0175233*T);
+  const Dr=D*rad, Mr=M*rad, Mpr=Mp*rad, Fr=F*rad;
+  const dL = 6.288774*Math.sin(Mpr) + 1.274027*Math.sin(2*Dr-Mpr) + 0.658314*Math.sin(2*Dr)
+    + 0.213618*Math.sin(2*Mpr) - 0.185116*Math.sin(Mr) - 0.114332*Math.sin(2*Fr)
+    + 0.058793*Math.sin(2*Dr-2*Mpr) + 0.057066*Math.sin(2*Dr-Mr-Mpr) + 0.053322*Math.sin(2*Dr+Mpr)
+    + 0.045758*Math.sin(2*Dr-Mr) - 0.040923*Math.sin(Mr-Mpr) - 0.034720*Math.sin(Dr) - 0.030383*Math.sin(Mr+Mpr);
+  const dB = 5.128122*Math.sin(Fr) + 0.280602*Math.sin(Mpr+Fr) + 0.277693*Math.sin(Mpr-Fr)
+    + 0.173237*Math.sin(2*Dr-Fr) + 0.055413*Math.sin(2*Dr-Mpr+Fr) + 0.046271*Math.sin(2*Dr-Mpr-Fr)
+    + 0.032573*Math.sin(2*Dr+Fr) + 0.017198*Math.sin(2*Mpr+Fr);
+  const lambda = Lp + dL, beta = dB;
+  const eps0 = 23 + 26/60 + 21.448/3600 - (46.8150*T + 0.00059*T*T - 0.001813*T*T*T)/3600;
+  const epsR = eps0*rad, lamR = lambda*rad, betR = beta*rad;
+  let raDeg = Math.atan2(Math.sin(lamR)*Math.cos(epsR) - Math.tan(betR)*Math.sin(epsR), Math.cos(lamR)) / rad;
+  raDeg = n360(raDeg);
+  const decDeg = Math.asin(Math.sin(betR)*Math.cos(epsR) + Math.cos(betR)*Math.sin(epsR)*Math.sin(lamR)) / rad;
+  return {raDeg, decDeg, eclipticLon: n360(lambda)};
+}
+/* Moon phase from geocentric elongation ψ (Moon-Sun angular separation):
+   illuminated fraction k = (1 - cos ψ)/2 (Meeus Ch. 48, low-precision
+   form). Waxing/waning determined from the sign of the ecliptic
+   longitude difference (Moon ahead of Sun = waxing). */
+function moonPhaseInfo(jd){
+  const sun = sunEquatorial(jd), moon = moonEquatorial(jd);
+  const elong = angularSepDeg(moon.raDeg, moon.decDeg, sun.raDeg, sun.decDeg);
+  const illumPct = (1 - Math.cos(elong*Math.PI/180)) / 2 * 100;
+  let diff = (moon.eclipticLon - sun.eclipticLon) % 360;
+  if (diff < 0) diff += 360;
+  const waxing = diff < 180;
+  let name;
+  if (illumPct < 2) name = 'New Moon';
+  else if (illumPct > 98) name = 'Full Moon';
+  else if (waxing) name = illumPct < 48 ? 'Waxing Crescent' : (illumPct <= 52 ? 'First Quarter' : 'Waxing Gibbous');
+  else name = illumPct < 48 ? 'Waning Crescent' : (illumPct <= 52 ? 'Last Quarter' : 'Waning Gibbous');
+  return {illumPct, name};
+}
+function angularSepDeg(ra1,dec1,ra2,dec2){
+  const rad=Math.PI/180;
+  const r1=ra1*rad, d1=dec1*rad, r2=ra2*rad, d2=dec2*rad;
+  const cosSep = Math.sin(d1)*Math.sin(d2) + Math.cos(d1)*Math.cos(d2)*Math.cos(r1-r2);
+  return Math.acos(Math.max(-1,Math.min(1,cosSep)))/rad;
+}
+function sunAltAtUT(y,m,d,utHours,lat,lon){
+  const jd=toJD(y,m,d,utHours);
+  const {raDeg,decDeg}=sunEquatorial(jd);
+  return raDecAltitude(jd,lat,lon,raDeg,decDeg);
+}
+function findSunEvents(y,m,d,lat,lon){
+  // All-GMT convention: scan forward 24h from 12:00 UT on the given UT calendar date.
+  const noonUT = 12;
+  const thresholds=[
+    {key:'sunset',target:-0.8333,dir:'down'},
+    {key:'civilDusk',target:-6,dir:'down'},
+    {key:'nauticalDusk',target:-12,dir:'down'},
+    {key:'astroDusk',target:-18,dir:'down'},
+    {key:'astroDawn',target:-18,dir:'up'},
+    {key:'nauticalDawn',target:-12,dir:'up'},
+    {key:'civilDawn',target:-6,dir:'up'},
+    {key:'sunrise',target:-0.8333,dir:'up'},
+  ];
+  const events={};
+  let prevUt=noonUT, prevAlt=sunAltAtUT(y,m,d,prevUt,lat,lon);
+  const totalMin=24*60;
+  for(let i=1;i<=totalMin;i++){
+    const utHours=noonUT+i/60.0;
+    const alt=sunAltAtUT(y,m,d,utHours,lat,lon);
+    for(const th of thresholds){
+      if (events[th.key]!==undefined) continue;
+      const down = th.dir==='down' && prevAlt>=th.target && alt<th.target;
+      const up   = th.dir==='up'   && prevAlt<=th.target && alt>th.target;
+      if(down||up){
+        const frac=(th.target-prevAlt)/(alt-prevAlt);
+        events[th.key]=prevUt+frac/60.0;
+      }
+    }
+    prevUt=utHours; prevAlt=alt;
+  }
+  return events;
+}
+function utToClock(utAbs){
+  let h=((utAbs%24)+24)%24;
+  const hh=Math.floor(h), mm=Math.round((h-hh)*60);
+  let h2=hh, m2=mm;
+  if(m2===60){m2=0;h2=(h2+1)%24;}
+  return String(h2).padStart(2,'0')+':'+String(m2).padStart(2,'0')+' UT';
+}
+function altitudeCurve(y,m,d,raDeg,decDeg,lat,lon,utStart,utEnd,stepMin){
+  const pts=[];
+  const n=Math.round((utEnd-utStart)*60/stepMin);
+  for(let i=0;i<=n;i++){
+    const ut=utStart+i*(stepMin/60.0);
+    const jd=toJD(y,m,d,ut);
+    pts.push({ut, alt:raDecAltitude(jd,lat,lon,raDeg,decDeg)});
+  }
+  return pts;
+}
+function findVisibilityWindow(curve,minAlt,nightStartUT,nightEndUT){
+  let windows=[], curStart=null;
+  for(const p of curve){
+    const inNight=p.ut>=nightStartUT && p.ut<=nightEndUT;
+    const ok=inNight && p.alt>=minAlt;
+    if(ok && curStart===null) curStart=p;
+    if(!ok && curStart!==null){ windows.push({start:curStart.ut,end:p.ut}); curStart=null; }
+  }
+  if(curStart!==null) windows.push({start:curStart.ut,end:nightEndUT});
+  if(windows.length===0) return null;
+  windows.sort((a,b)=>(b.end-b.start)-(a.end-a.start));
+  const best=windows[0];
+  let transit=null,maxAlt=-999;
+  for(const p of curve){
+    if(p.ut>=best.start && p.ut<=best.end && p.alt>maxAlt){maxAlt=p.alt; transit=p.ut;}
+  }
+  return {start:best.start,end:best.end,transitUT:transit,maxAlt};
+}
+/* -------------------------------------------------------------------------
+   SCHEDULER — meridian-safe (GEM flip-avoiding), back-to-back packing,
+   with fixed-time events.
+
+   Fixed-time targets (t.fixedStartUT set — e.g. a predicted asteroid
+   occultation) are booked FIRST, before any priority/arc placement runs,
+   and treated as immovable: their time is dictated by orbital mechanics,
+   not mount convenience, so neither the meridian buffer nor the >90-min
+   waiver applies to them, and nothing in the normal scheduling loop is
+   allowed to displace them. Every flexible target then routes around
+   them automatically, because they simply occupy the same shared
+   `booked` timeline that ordinary conflicts already respect — no special
+   casing needed in the arc-placement logic below. The only place
+   priority still matters for a fixed-time target is a genuine clash
+   between two fixed times themselves, which no amount of rescheduling
+   can resolve; the lower-priority one is reported unscheduled.
+
+   Each (non-fixed) target's visibility window is split at its meridian
+   transit (HA=0, i.e. the altitude maximum found within the window)
+   into a pre-transit ("East") arc and a post-transit ("West") arc, each
+   pulled back MERIDIAN_BUFFER_MIN minutes from the transit itself as a
+   safety margin. A slot is only ever placed entirely within one arc, so
+   an allocated sector avoids the meridian flip with a buffer either side
+   — EXCEPT for a target whose required duration exceeds
+   MERIDIAN_WAIVER_MIN, for which the rule is waived entirely. Within
+   priority order, placement uses first-fit-earliest so sectors pack
+   back-to-back with no artificial gaps, while any real gap left by
+   non-overlapping windows stays open for targets added later.
+   ------------------------------------------------------------------------- */
+const MERIDIAN_BUFFER_MIN = 7;
+const MERIDIAN_WAIVER_MIN = 90;
+const DAY_PAD_H = 2.25; // hours of padding beyond the night bounds shown on the chart, wide enough to show real daylight
+
+function scheduleTargets(targets){
+  const withWindow=targets.filter(t=>t.window);
+  const noWindow=targets.filter(t=>!t.window).map(t=>({...t,reason:'Not visible above the minimum-altitude threshold during the observing window on this date.'}));
+
+  const booked=[]; const scheduled=[]; const unscheduled=[];
+
+  // --- Pass 1: fixed-time events, highest priority first, immovable ---
+  const fixed = withWindow.filter(t=>t.fixedStartUT!=null);
+  const flexibleTargets = withWindow.filter(t=>t.fixedStartUT==null);
+  const fixedOrder = [...fixed].sort((a,b)=>a.priority-b.priority || a.fixedStartUT-b.fixedStartUT);
+  for(const t of fixedOrder){
+    const durHours = t.durationMin/60.0;
+    const s = t.fixedStartUT, e = s + durHours;
+    const conflict = booked.some(b=>s<b.end && e>b.start);
+    if(conflict){
+      unscheduled.push({...t, reason:`Fixed start time ${utToClock(s)} conflicts with a higher- or equal-priority fixed-time event already booked — the time cannot be moved to resolve this.`});
+      continue;
+    }
+    const crosses = t.window.transitUT!=null && s < t.window.transitUT && e > t.window.transitUT;
+    const belowLimit = t.window.start!=null && (s < t.window.start || e > t.window.end);
+    let side = crosses ? `Fixed — spans meridian (flip required)` : 'Fixed time';
+    booked.push({start:s, end:e});
+    scheduled.push({...t, slotStart:s, slotEnd:e, side, isFixed:true, belowAltLimit:belowLimit});
+  }
+
+  // --- Pass 2: ordinary priority/arc placement, routing around fixed bookings ---
+  const bufH = MERIDIAN_BUFFER_MIN/60.0;
+  for(const t of flexibleTargets){
+    t.meridianWaived = t.durationMin > MERIDIAN_WAIVER_MIN;
+    if(t.meridianWaived){
+      t.east = null; t.west = null;
+    } else {
+      const eastEnd = Math.max(t.window.start, Math.min(t.window.end, t.window.transitUT - bufH));
+      const westStart = Math.min(t.window.end, Math.max(t.window.start, t.window.transitUT + bufH));
+      t.east = {start: t.window.start, end: eastEnd};   // pre-transit arc, minus buffer
+      t.west = {start: westStart, end: t.window.end};   // post-transit arc, minus buffer
+    }
+  }
+
+  const order=[...flexibleTargets].sort((a,b)=>{
+    if(a.priority!==b.priority) return a.priority-b.priority; // 1 = highest, scheduled first
+    const flexA = a.meridianWaived ? (a.window.end-a.window.start) : Math.max(a.east.end-a.east.start, a.west.end-a.west.start);
+    const flexB = b.meridianWaived ? (b.window.end-b.window.start) : Math.max(b.east.end-b.east.start, b.west.end-b.west.start);
+    return flexA-flexB; // least flexible (smaller usable arc) placed first
+  });
+
+  function earliestFitInRegion(regionStart, regionEnd, durHours){
+    const relevant = booked.filter(b=>b.end>regionStart && b.start<regionEnd).sort((a,b)=>a.start-b.start);
+    let cursor = regionStart;
+    for(const b of relevant){
+      if (b.start - cursor >= durHours - 1e-9) return {s:cursor, e:cursor+durHours};
+      cursor = Math.max(cursor, b.end);
+    }
+    if (regionEnd - cursor >= durHours - 1e-9) return {s:cursor, e:cursor+durHours};
+    return null;
+  }
+
+  for(const t of order){
+    const durHours=t.durationMin/60.0;
+
+    if(t.meridianWaived){
+      const slot = earliestFitInRegion(t.window.start, t.window.end, durHours);
+      if(!slot){
+        unscheduled.push({...t, reason:`Requires ${t.durationMin} min (meridian rule waived, over ${MERIDIAN_WAIVER_MIN} min) but the full visibility window is already occupied by higher-priority targets.`});
+        continue;
+      }
+      const crosses = slot.s < t.window.transitUT && slot.e > t.window.transitUT;
+      const side = crosses ? `Spans meridian (>${MERIDIAN_WAIVER_MIN}min, flip allowed)` : (slot.e<=t.window.transitUT ? 'Pre-transit (E)' : 'Post-transit (W)');
+      booked.push({start:slot.s, end:slot.e});
+      scheduled.push({...t, slotStart:slot.s, slotEnd:slot.e, side});
+      continue;
+    }
+
+    const eastLen=t.east.end-t.east.start, westLen=t.west.end-t.west.start;
+    const candidates=[];
+    if(eastLen>=durHours-1e-9){
+      const slot=earliestFitInRegion(t.east.start,t.east.end,durHours);
+      if(slot) candidates.push({side:'Pre-transit (E)',slot});
+    }
+    if(westLen>=durHours-1e-9){
+      const slot=earliestFitInRegion(t.west.start,t.west.end,durHours);
+      if(slot) candidates.push({side:'Post-transit (W)',slot});
+    }
+    if(candidates.length===0){
+      let reason;
+      if(eastLen<durHours-1e-9 && westLen<durHours-1e-9){
+        reason=`Requires ${t.durationMin} min; neither side of the meridian (each pulled back ${MERIDIAN_BUFFER_MIN} min from transit) offers enough time without a flip (pre-transit ${(eastLen*60).toFixed(0)} min, post-transit ${(westLen*60).toFixed(0)} min available). Targets over ${MERIDIAN_WAIVER_MIN} min skip this rule automatically.`;
+      } else {
+        reason='Enough time exists on one side of the meridian, but higher-priority targets already occupy it (possibly a fixed-time event).';
+      }
+      unscheduled.push({...t, reason});
+      continue;
+    }
+    candidates.sort((a,b)=>a.slot.s-b.slot.s); // prefer whichever side can start soonest -> tighter packing
+    const chosen=candidates[0];
+    booked.push({start:chosen.slot.s, end:chosen.slot.e});
+    scheduled.push({...t, slotStart:chosen.slot.s, slotEnd:chosen.slot.e, side:chosen.side});
+  }
+  scheduled.sort((a,b)=>a.slotStart-b.slotStart);
+  return {scheduled, unscheduled:[...unscheduled,...noWindow]};
+}
+
+/* =========================================================================
+   RA / DEC PARSING — accepts "hh:mm:ss", "hh mm ss", or decimal hours
+   (RA) / decimal degrees (Dec, signed). Fully anchored (^...$) and range
+   checked: a string has to be a plausible coordinate top-to-bottom, not
+   just contain two digit-groups somewhere inside it. This matters
+   because bulk/file/link import feeds arbitrary external text through
+   this function — an unanchored version would silently accept fragments
+   of unrelated text (e.g. minified JS such as "1E4:{other:00K}") as a
+   "valid" RA/Dec, which is exactly how corrupted entries got into the
+   queue previously.
+   ========================================================================= */
+function parseRA(str){
+  if(!str) return null;
+  const s = String(str).trim();
+  if(/^\d{1,2}(\.\d+)?$/.test(s)){
+    const v = parseFloat(s);
+    return (v>=0 && v<24) ? v : null;
+  }
+  const m = s.match(/^(\d{1,2})[:\s](\d{1,2})(?:[:\s](\d{1,2}(?:\.\d+)?))?$/);
+  if(!m) return null;
+  const h=parseFloat(m[1]), mi=parseFloat(m[2]), sec=m[3]?parseFloat(m[3]):0;
+  if(h>=24||mi>=60||sec>=60) return null;
+  return h + mi/60 + sec/3600;
+}
+function parseDec(str){
+  if(!str) return null;
+  const s = String(str).trim();
+  if(/^[+-]?\d{1,2}(\.\d+)?$/.test(s)){
+    const v = parseFloat(s);
+    return (v>=-90 && v<=90) ? v : null;
+  }
+  const m = s.match(/^([+-]?)(\d{1,2})[:\s](\d{1,2})(?:[:\s](\d{1,2}(?:\.\d+)?))?$/);
+  if(!m) return null;
+  const sign = m[1]==='-' ? -1 : 1;
+  const d=parseFloat(m[2]), mi=parseFloat(m[3]), sec=m[4]?parseFloat(m[4]):0;
+  if(d>90||mi>=60||sec>=60) return null;
+  return sign*(d + mi/60 + sec/3600);
+}
+
+/* =========================================================================
+   STATE, STORAGE, UI WIRING
+   ========================================================================= */
+let targets = [];
+let nextId = 1;
+let lastResult = null;
+const MAX_DURATION_MIN = 720; // 12h — generously above any realistic single-night session
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Single source of truth for "is this a real target row": every entry
+// point (form, bulk paste, file import, link import) funnels through
+// this before it's ever pushed into `targets`. Anchored RA/Dec parsing
+// (above) already rejects most garbage; this adds a name sanity check,
+// a strict priority range, and a duration range, and REJECTS rather
+// than silently clamping/coercing out-of-range values — clamping is
+// what let obviously-wrong values through before.
+// HH:MM in UT. Under 12h is treated as the early-morning continuation of
+// the observing night (matching the same convention already used for
+// dusk/dawn, which run continuously past 24h rather than wrapping) — so
+// "01:30" means 01:30 the following calendar day, not earlier the same
+// evening, which is never a valid interpretation for an observing night.
+function parseFixedTime(str){
+  if(!str) return null;
+  const s = String(str).trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  const h = parseInt(m[1],10), mi = parseInt(m[2],10);
+  if(h>23 || mi>59) return null;
+  const hour = h + mi/60;
+  return hour < 12 ? hour + 24 : hour;
+}
+
+function buildTarget(nameRaw, raStr, decStr, priorityRaw, durationRaw, fixedTimeRaw){
+  const name = String(nameRaw||'').trim();
+  if(!name || name.length>80) return null;
+  if(/[{}\[\];]/.test(name) || /\bvar\b/.test(name) || /\bfunction\b/i.test(name) || /=>/.test(name)) return null; // code-like fragments, not target names
+  if(!/^[A-Za-z0-9(]/.test(name)) return null; // real designations start with a letter, digit, or '(' (numbered asteroids, e.g. "(4) Vesta") — not other punctuation
+  const raH = parseRA(raStr), decDeg = parseDec(decStr);
+  if(raH===null || decDeg===null) return null;
+  const priority = parseInt(priorityRaw,10);
+  if(!Number.isInteger(priority) || priority<0 || priority>5 || String(priorityRaw).trim()!==String(priority)) return null;
+  const durationMin = parseFloat(durationRaw);
+  if(!isFinite(durationMin) || durationMin<=0 || durationMin>MAX_DURATION_MIN) return null;
+  let fixedStartUT = null, fixedStartRaw = null;
+  if(fixedTimeRaw!=null && String(fixedTimeRaw).trim()!==''){
+    fixedStartUT = parseFixedTime(fixedTimeRaw);
+    if(fixedStartUT===null) return null; // malformed fixed time -> reject outright rather than silently fall back to flexible
+    fixedStartRaw = String(fixedTimeRaw).trim();
+  }
+  return {id: nextId++, name, raStr:String(raStr).trim(), decStr:String(decStr).trim(), raH, decDeg, priority, durationMin, fixedStartUT, fixedStartRaw};
+}
+
+// Same shape check as buildTarget, applied to entries already sitting in
+// storage — used at load time to silently drop any corrupted rows from
+// a past import bug rather than surface them again.
+function isValidStoredTarget(t){
+  return t && typeof t==='object'
+    && typeof t.name==='string' && t.name.length>0 && t.name.length<=80
+    && !/[{}\[\];]/.test(t.name) && !/\bvar\b/.test(t.name) && /^[A-Za-z0-9(]/.test(t.name)
+    && typeof t.raH==='number' && isFinite(t.raH) && t.raH>=0 && t.raH<24
+    && typeof t.decDeg==='number' && isFinite(t.decDeg) && t.decDeg>=-90 && t.decDeg<=90
+    && Number.isInteger(t.priority) && t.priority>=0 && t.priority<=5
+    && typeof t.durationMin==='number' && isFinite(t.durationMin) && t.durationMin>0 && t.durationMin<=MAX_DURATION_MIN
+    && (t.fixedStartUT==null || (typeof t.fixedStartUT==='number' && isFinite(t.fixedStartUT) && t.fixedStartUT>=0 && t.fixedStartUT<=48));
+}
+
+function setStatus(msg, isWarn){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.style.color = isWarn ? 'var(--coral)' : 'var(--muted-2)';
+}
+function fmtHM(hours){
+  const h = Math.floor(hours), m = Math.round((hours-h)*60);
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+function setDefaultDate(){
+  const d = new Date();
+  const iso = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('cfgDate').value = iso;
+}
+
+async function saveTargets(){
+  if(!window.storage) return;
+  try{ await window.storage.set('flarestar-targets', JSON.stringify(targets), false); }
+  catch(e){ console.error('Storage save (targets) failed:', e); }
+}
+async function saveConfig(){
+  if(!window.storage) return;
+  try{
+    const cfg = {
+      lat: document.getElementById('cfgLat').value,
+      lon: document.getElementById('cfgLon').value,
+      minAlt: document.getElementById('cfgMinAlt').value,
+      twilight: document.getElementById('cfgTwilight').value
+    };
+    await window.storage.set('flarestar-config', JSON.stringify(cfg), false);
+  }catch(e){ console.error('Storage save (config) failed:', e); }
+}
+async function loadState(){
+  let removedCorrupt = 0;
+  if(window.storage){
+    try{
+      const r = await window.storage.get('flarestar-targets', false);
+      if(r && r.value){
+        const loaded = JSON.parse(r.value);
+        targets = Array.isArray(loaded) ? loaded.filter(isValidStoredTarget) : [];
+        removedCorrupt = (Array.isArray(loaded) ? loaded.length : 0) - targets.length;
+        nextId = targets.reduce((m,t)=>Math.max(m,t.id||0),0)+1;
+        if(removedCorrupt>0) saveTargets(); // persist the cleaned-up list
+      }
+    }catch(e){ /* no saved queue yet */ }
+    try{
+      const r2 = await window.storage.get('flarestar-config', false);
+      if(r2 && r2.value){
+        const cfg = JSON.parse(r2.value);
+        if(cfg.lat!=null) document.getElementById('cfgLat').value = cfg.lat;
+        if(cfg.lon!=null) document.getElementById('cfgLon').value = cfg.lon;
+        if(cfg.minAlt!=null) document.getElementById('cfgMinAlt').value = cfg.minAlt;
+        if(cfg.twilight) document.getElementById('cfgTwilight').value = cfg.twilight;
+      }
+    }catch(e){ /* no saved config yet */ }
+  }
+  renderQueue();
+  if(removedCorrupt>0){
+    setStatus(`Removed ${removedCorrupt} corrupted queue entr${removedCorrupt===1?'y':'ies'} left over from a parsing bug (now fixed).`, true);
+  }
+}
+
+function renderQueue(){
+  const c = document.getElementById('queueContainer');
+  document.getElementById('queueCount').textContent = targets.length ? `(${targets.length})` : '';
+  if(targets.length===0){ c.innerHTML='<div class="queue-empty">No targets yet — add one above.</div>'; return; }
+  const sorted = [...targets].sort((a,b)=>a.name.localeCompare(b.name, undefined, {sensitivity:'base', numeric:true}));
+  let html = '';
+  for(const t of sorted){
+    const rowClass = t.priority===0 ? ' row-inactive' : '';
+    const fixedAltCheck = t.fixedStartUT!=null ? checkFixedTimeAltitude(t.raH, t.decDeg, t.fixedStartUT) : null;
+    const fixedAltWarnLine = fixedAltCheck && fixedAltCheck.belowLimit
+      ? `<div class="qcard-coords" style="color:var(--coral);margin-top:2px;">&#9888; ${fixedAltCheck.alt.toFixed(1)}&deg; at fixed time — below min-alt (${fixedAltCheck.minAlt}&deg;)</div>` : '';
+    html += `<div class="qcard${rowClass}">
+      <div class="qcard-row1">
+        <span class="qcard-name" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</span>
+        <button class="del-btn" data-id="${t.id}" title="Remove">&#10005;</button>
+      </div>
+      <div class="qcard-coords" title="${escapeHtml(t.raStr)} / ${escapeHtml(t.decStr)}">${escapeHtml(t.raStr)} &nbsp;/&nbsp; ${escapeHtml(t.decStr)}</div>
+      ${fixedAltWarnLine}
+      <div class="qcard-row3">
+        <select class="inline-p" data-id="${t.id}" data-field="priority">${[1,2,3,4,5,0].map(p=>`<option value="${p}" ${p===t.priority?'selected':''}>${p===0?'0 off':p}</option>`).join('')}</select>
+        <input class="inline-num" type="number" data-id="${t.id}" data-field="durationMin" value="${t.durationMin}">
+        <span class="qcard-durlabel">min</span>
+      </div>
+      <div class="qcard-row3">
+        <input class="inline-fixed" type="text" data-id="${t.id}" placeholder="HH:MM fixed" value="${escapeHtml(t.fixedStartRaw||'')}" title="Fixed start time (UT) — leave blank for a normal flexible target">
+        <span class="qcard-durlabel">${t.fixedStartUT!=null?'fixed (UT)':'flexible'}</span>
+      </div>
+    </div>`;
+  }
+  c.innerHTML = html;
+  c.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click', ()=>{
+    const id = parseInt(b.dataset.id,10);
+    targets = targets.filter(t=>t.id!==id);
+    saveTargets(); renderQueue();
+  }));
+  c.querySelectorAll('[data-field]').forEach(inp=>inp.addEventListener('change', ()=>{
+    const id=parseInt(inp.dataset.id,10), field=inp.dataset.field;
+    const t = targets.find(t=>t.id===id);
+    if(t){ t[field] = field==='priority' ? parseInt(inp.value,10) : parseFloat(inp.value); saveTargets(); }
+  }));
+  c.querySelectorAll('.inline-fixed').forEach(inp=>inp.addEventListener('change', ()=>{
+    const id = parseInt(inp.dataset.id,10);
+    const t = targets.find(t=>t.id===id);
+    if(!t) return;
+    const raw = inp.value.trim();
+    if(raw===''){
+      t.fixedStartUT = null; t.fixedStartRaw = null;
+      saveTargets(); renderQueue();
+      setStatus(`"${t.name}" is now flexible (no fixed time).`, false);
+      return;
+    }
+    const parsed = parseFixedTime(raw);
+    if(parsed===null){
+      setStatus(`Could not parse "${raw}" as a fixed time — use HH:MM (UT), e.g. 01:30.`, true);
+      renderQueue(); // revert the input to the last valid value
+      return;
+    }
+    t.fixedStartUT = parsed; t.fixedStartRaw = raw;
+    saveTargets(); renderQueue();
+    setStatus(`"${t.name}" fixed to ${raw} UT.`, false);
+  }));
+}
+
+document.getElementById('tFixedEnable').addEventListener('change', (e)=>{
+  document.getElementById('tFixedTimeRow').style.display = e.target.checked ? 'grid' : 'none';
+  updateFixedAltWarning();
+});
+
+function updateFixedAltWarning(){
+  const warnEl = document.getElementById('tFixedAltWarn');
+  const enabled = document.getElementById('tFixedEnable').checked;
+  const timeStr = document.getElementById('tFixedTime').value.trim();
+  if(!enabled || !timeStr){ warnEl.style.display='none'; return; }
+  const fixedUT = parseFixedTime(timeStr);
+  const raH = parseRA(document.getElementById('tRA').value.trim());
+  const decDeg = parseDec(document.getElementById('tDec').value.trim());
+  if(fixedUT===null || raH===null || decDeg===null){ warnEl.style.display='none'; return; }
+  const check = checkFixedTimeAltitude(raH, decDeg, fixedUT);
+  if(!check){ warnEl.style.display='none'; return; }
+  if(check.belowLimit){
+    warnEl.textContent = `⚠ At ${timeStr} UT this target sits at ${check.alt.toFixed(1)}° — below your ${check.minAlt}° min-altitude limit. The fixed time can't be moved to fix this; the event will still be logged but flagged.`;
+    warnEl.style.display='block';
+  } else {
+    warnEl.textContent = `At ${timeStr} UT this target is at ${check.alt.toFixed(1)}° — above your ${check.minAlt}° limit.`;
+    warnEl.style.color = 'var(--cyan)';
+    warnEl.style.display='block';
+  }
+}
+['tFixedTime','tRA','tDec'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{ document.getElementById('tFixedAltWarn').style.color='var(--coral)'; updateFixedAltWarning(); });
+});
+
+document.getElementById('btnAddTarget').addEventListener('click', ()=>{
+  const name = document.getElementById('tName').value.trim();
+  const raStr = document.getElementById('tRA').value.trim();
+  const decStr = document.getElementById('tDec').value.trim();
+  const priority = document.getElementById('tPriority').value;
+  const durationMin = document.getElementById('tDuration').value;
+  const fixedEnabled = document.getElementById('tFixedEnable').checked;
+  const fixedTime = fixedEnabled ? document.getElementById('tFixedTime').value.trim() : '';
+  if(fixedEnabled && !fixedTime){
+    setStatus('Check the fixed start time (HH:MM UT), or uncheck "Fixed-time event".', true);
+    return;
+  }
+  const t = buildTarget(name, raStr, decStr, priority, durationMin, fixedTime);
+  if(!t){
+    const msg = fixedEnabled
+      ? 'Could not parse target — check name, RA, Dec, priority, duration, and that the fixed time is HH:MM (UT).'
+      : 'Could not parse target — check name, RA, Dec, priority and duration.';
+    setStatus(msg, true);
+    return;
+  }
+  targets.push(t);
+  saveTargets(); renderQueue();
+  document.getElementById('tName').value='';
+  document.getElementById('tRA').value='';
+  document.getElementById('tDec').value='';
+  document.getElementById('tDuration').value='60';
+  document.getElementById('tFixedEnable').checked=false;
+  document.getElementById('tFixedTime').value='';
+  document.getElementById('tFixedTimeRow').style.display='none';
+  document.getElementById('tFixedAltWarn').style.display='none';
+  setStatus(`Added "${t.name}" to the queue.`, false);
+});
+
+function splitDataLine(line){
+  if(line.indexOf('\t')>=0 && line.indexOf(',')<0) return line.split('\t').map(s=>s.trim());
+  const out=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){
+      if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ;
+    } else if(c===',' && !inQ){ out.push(cur.trim()); cur=''; }
+    else cur+=c;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+// Column-name aliases used to detect a header row. Any column whose
+// header doesn't match one of these (e.g. "Remarks", "Notes", "Filter")
+// is simply never read — its position no longer matters, which is what
+// broke the previous positional parser when a Remarks column was
+// present: everything after it silently shifted one field to the left.
+const FIELD_ALIASES = {
+  name: ['name','target','star','object','designation','id'],
+  ra: ['ra','rightascension','r a'],
+  dec: ['dec','decl','declination'],
+  priority: ['priority','pri','pr'],
+  duration: ['duration','durationmin','min','minutes','time','dur'],
+  fixedStart: ['fixedstart','fixedtime','fixed','occultation','eventtime'],
+};
+function normalizeHeader(h){ return String(h).toLowerCase().replace(/[^a-z]+/g,''); }
+function detectHeaderMap(parts){
+  const norm = parts.map(normalizeHeader);
+  const map = {};
+  for(const [field, aliases] of Object.entries(FIELD_ALIASES)){
+    const idx = norm.findIndex(n => aliases.includes(n));
+    if(idx>=0) map[field]=idx;
+  }
+  const required = ['name','ra','dec','duration'];
+  return required.every(f=>map[f]!==undefined) ? map : null;
+}
+
+function parseBulkLines(text){
+  const lines = String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length===0) return {added:0, failed:0};
+
+  // Scan the first few lines for a real header, so a title/preamble row
+  // (e.g. a spreadsheet export's "Flarestar Scheduler DATA" banner line)
+  // doesn't block header-aware column matching — without this, detection
+  // only worked when the header happened to be the very first line, and
+  // fell back to position-based parsing otherwise, which only tolerates
+  // an unrecognized trailing column by coincidence, not by design.
+  const SCAN_WINDOW = 5;
+  let dataLines = lines, colMap = null, headerLineIdx = -1;
+  for(let i=0; i<Math.min(SCAN_WINDOW, lines.length); i++){
+    const map = detectHeaderMap(splitDataLine(lines[i]));
+    if(map){ colMap = map; headerLineIdx = i; break; }
+  }
+  if(colMap!==null){
+    dataLines = lines.slice(headerLineIdx+1); // header found -> everything before it (title rows etc.) is silently skipped, not counted as failed
+  }
+
+  let added=0, failed=0;
+  for(const line of dataLines){
+    const parts = splitDataLine(line);
+    let name, raStr, decStr, pr, dur, fixedT;
+    if(colMap){
+      name  = parts[colMap.name];
+      raStr = parts[colMap.ra];
+      decStr= parts[colMap.dec];
+      pr    = colMap.priority!==undefined ? parts[colMap.priority] : '3'; // default Medium if no Priority column
+      dur   = parts[colMap.duration];
+      fixedT= colMap.fixedStart!==undefined ? parts[colMap.fixedStart] : '';
+    } else {
+      if(parts.length<5){ failed++; continue; }
+      [name, raStr, decStr, pr, dur] = parts;
+      fixedT = '';
+    }
+    const t = buildTarget(name, raStr, decStr, pr, dur, fixedT);
+    if(!t){ failed++; continue; }
+    targets.push(t);
+    added++;
+  }
+  return {added, failed};
+}
+function sheetsLinkToCsvUrl(link){
+  link = link.trim();
+  if(!link) return null;
+  if(/\.csv(\?|$)/i.test(link) || /output=csv/i.test(link) || /format=csv/i.test(link)) return link;
+  const m = link.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if(!m) return null;
+  const gidMatch = link.match(/[?#&]gid=(\d+)/);
+  return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gidMatch?gidMatch[1]:'0'}`;
+}
+
+document.getElementById('btnBulkAdd').addEventListener('click', ()=>{
+  const {added,failed} = parseBulkLines(document.getElementById('bulkText').value);
+  saveTargets(); renderQueue();
+  document.getElementById('bulkText').value='';
+  setStatus(`Bulk import: ${added} added${failed?`, ${failed} skipped (parse error)`:''}.`, failed>0);
+});
+
+document.getElementById('bulkFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const {added,failed} = parseBulkLines(String(reader.result));
+    saveTargets(); renderQueue();
+    setStatus(`File import (${file.name}): ${added} added${failed?`, ${failed} skipped (parse error)`:''}.`, failed>0);
+  };
+  reader.onerror = () => setStatus('Could not read that file.', true);
+  reader.readAsText(file);
+  e.target.value='';
+});
+
+document.getElementById('btnLoadLink').addEventListener('click', async ()=>{
+  const link = document.getElementById('bulkLink').value.trim();
+  if(!link){ setStatus('Paste a Google Sheets or CSV link first.', true); return; }
+  const csvUrl = sheetsLinkToCsvUrl(link);
+  if(!csvUrl){ setStatus('Could not parse that as a Google Sheets or CSV link.', true); return; }
+  setStatus('Fetching…', false);
+  try{
+    const resp = await fetch(csvUrl);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text = await resp.text();
+    const ct = (resp.headers.get('content-type')||'').toLowerCase();
+    const looksLikeHtml = /^\s*<(!doctype|html)/i.test(text) || ct.includes('text/html');
+    if(looksLikeHtml){
+      setStatus('That link returned a web page, not CSV data — the sheet is probably not public. Use File → Share → Publish to web → CSV in Google Sheets, or the file picker instead.', true);
+      return;
+    }
+    const {added,failed} = parseBulkLines(text);
+    saveTargets(); renderQueue();
+    setStatus(`Link import: ${added} added${failed?`, ${failed} skipped (parse error)`:''}.`, failed>0);
+  }catch(err){
+    setStatus('Could not fetch that link — the sheet may not be public, or the browser blocked the cross-origin request. Try the file picker instead.', true);
+  }
+});
+
+document.getElementById('btnClearQueue').addEventListener('click', ()=>{
+  if(targets.length && !confirm('Clear all targets from the queue?')) return;
+  targets=[]; saveTargets(); renderQueue(); setStatus('Queue cleared.', false);
+});
+
+['cfgLat','cfgLon','cfgMinAlt','cfgTwilight'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', saveConfig);
+});
+
+document.getElementById('btnGenerate').addEventListener('click', generateSchedule);
+
+function generateSchedule(){
+  if(targets.length===0){ setStatus('Add at least one target first.', true); return; }
+  const dateVal = document.getElementById('cfgDate').value;
+  if(!dateVal){ setStatus('Pick an observing date.', true); return; }
+  const [y,m,d] = dateVal.split('-').map(Number);
+  const lat = parseFloat(document.getElementById('cfgLat').value);
+  const lon = parseFloat(document.getElementById('cfgLon').value);
+  const minAlt = parseFloat(document.getElementById('cfgMinAlt').value);
+  const twilight = document.getElementById('cfgTwilight').value;
+  if(isNaN(lat)||isNaN(lon)||isNaN(minAlt)){ setStatus('Check latitude/longitude/min-altitude values.', true); return; }
+  saveConfig();
+
+  const ev = findSunEvents(y,m,d,lat,lon);
+  const boundKey = twilight==='astro' ? ['astroDusk','astroDawn'] : twilight==='nautical' ? ['nauticalDusk','nauticalDawn'] : ['civilDusk','civilDawn'];
+  let nightStartUT = ev[boundKey[0]];
+  let nightEndUT = ev[boundKey[1]];
+  if(nightEndUT < nightStartUT) nightEndUT += 24;
+  const nightLenH = nightEndUT - nightStartUT;
+
+  const activeTargets = targets.filter(t=>t.priority>0);
+  const inactiveCount = targets.length - activeTargets.length;
+
+  const computed = activeTargets.map(t=>{
+    const raDeg = t.raH*15;
+    const curve = altitudeCurve(y,m,d, raDeg, t.decDeg, lat, lon, nightStartUT-1, nightEndUT+1, 2);
+    const window = findVisibilityWindow(curve, minAlt, nightStartUT, nightEndUT);
+    return {...t, curve, window};
+  });
+
+  const result = scheduleTargets(computed);
+  const totalRequested = activeTargets.reduce((s,t)=>s+t.durationMin,0);
+  const totalScheduled = result.scheduled.reduce((s,t)=>s+t.durationMin,0);
+
+  // Moon: not a scheduled target, just a reference curve spanning the full chart width
+  const moonCurve = [];
+  const moonStart = nightStartUT - DAY_PAD_H, moonEnd = nightEndUT + DAY_PAD_H;
+  const moonSteps = Math.round((moonEnd-moonStart)*60/5);
+  for(let i=0;i<=moonSteps;i++){
+    const ut = moonStart + i*(5/60.0);
+    const jd = toJD(y,m,d,ut);
+    const {raDeg, decDeg} = moonEquatorial(jd);
+    moonCurve.push({ut, alt: raDecAltitude(jd,lat,lon,raDeg,decDeg), raDeg, decDeg});
+  }
+  const moonPhase = moonPhaseInfo(toJD(y,m,d,(nightStartUT+nightEndUT)/2));
+
+  lastResult = {
+    y,m,d,lat,lon,minAlt,twilight,
+    nightStartUT, nightEndUT, nightLenH, ev, inactiveCount, moonCurve, moonPhase,
+    scheduled: result.scheduled, unscheduled: result.unscheduled,
+    totalRequested, totalScheduled
+  };
+
+  renderResults(lastResult);
+  const inactiveNote = inactiveCount>0 ? ` (${inactiveCount} inactive, excluded)` : '';
+  setStatus(`Schedule generated for ${dateVal} (UT) — ${result.scheduled.length}/${activeTargets.length} active targets fit${inactiveNote}.`, result.unscheduled.length>0);
+}
+
+function altAtUT(target, ut, res){
+  const jd = toJD(res.y,res.m,res.d,ut);
+  return raDecAltitude(jd, res.lat, res.lon, target.raH*15, target.decDeg);
+}
+function moonSepAtUT(target, ut, res){
+  const jd = toJD(res.y,res.m,res.d,ut);
+  const moon = moonEquatorial(jd);
+  return angularSepDeg(target.raH*15, target.decDeg, moon.raDeg, moon.decDeg);
+}
+
+// Real-time altitude check for a fixed-time assignment, against whatever
+// is currently in the session config panel (date/site/min-alt) — used to
+// warn the moment a fixed time is set, rather than only after a full
+// schedule is generated. Returns null if the config panel doesn't have
+// enough to compute yet (e.g. no date picked).
+function checkFixedTimeAltitude(raH, decDeg, fixedStartUT){
+  const dateVal = document.getElementById('cfgDate').value;
+  if(!dateVal) return null;
+  const [y,m,d] = dateVal.split('-').map(Number);
+  const lat = parseFloat(document.getElementById('cfgLat').value);
+  const lon = parseFloat(document.getElementById('cfgLon').value);
+  const minAlt = parseFloat(document.getElementById('cfgMinAlt').value);
+  if(isNaN(lat)||isNaN(lon)||isNaN(minAlt)) return null;
+  const jd = toJD(y,m,d,fixedStartUT);
+  const alt = raDecAltitude(jd, lat, lon, raH*15, decDeg);
+  return {alt, minAlt, belowLimit: alt < minAlt};
+}
+
+function renderResults(res){
+  const col = document.getElementById('resultsColumn');
+  let html = '';
+
+  html += `<div class="summary-strip">
+    <div class="summary-cell"><div class="label">Nautical start / end</div><div class="value">${utToClock(res.ev.nauticalDusk).replace(' UT','')}&ndash;${utToClock(res.ev.nauticalDawn).replace(' UT','')}</div><div class="sub">−12&deg; twilight, UT</div></div>
+    <div class="summary-cell"><div class="label">Night length</div><div class="value">${fmtHM(res.nightLenH)}</div><div class="sub">dusk &rarr; dawn (${res.twilight})</div></div>
+    <div class="summary-cell"><div class="label">Moon phase</div><div class="value">${res.moonPhase.name}</div><div class="sub">${res.moonPhase.illumPct.toFixed(0)}% illuminated</div></div>
+    <div class="summary-cell"><div class="label">Scheduled</div><div class="value" style="color:var(--cyan)">${res.scheduled.length} / ${res.scheduled.length+res.unscheduled.length}</div><div class="sub">${(res.totalScheduled/60).toFixed(1)} h allocated</div></div>
+    <div class="summary-cell"><div class="label">Inactive</div><div class="value" style="color:var(--muted-2)">${res.inactiveCount}</div><div class="sub">excluded from run</div></div>
+  </div>`;
+
+  html += `<div class="panel"><h2>Schedule <span class="hint">GMT (UT), sorted chronologically</span></h2>`;
+  if(res.scheduled.length===0){
+    html += `<div class="queue-empty">No targets could be scheduled for this night.</div>`;
+  } else {
+    html += `<table><thead><tr><th>Start</th><th>End</th><th>Target</th><th>Pri</th><th>Dur (min)</th><th>Side</th><th>Alt @ mid (&deg;)</th><th>Airmass @ mid</th><th>Moon sep (&deg;)</th></tr></thead><tbody>`;
+    for(const s of res.scheduled){
+      const mid = (s.slotStart+s.slotEnd)/2;
+      const midAlt = altAtUT(s, mid, res);
+      const moonSep = moonSepAtUT(s, mid, res);
+      const sepColor = moonSep<20 ? 'var(--coral)' : (moonSep<40 ? 'var(--gold)' : 'var(--muted)');
+      const fixedTag = s.isFixed ? ` <span class="flex-badge" title="Immovable — fixed start time">FIXED</span>` : '';
+      const altWarn = s.isFixed && (s.belowAltLimit || midAlt < res.minAlt)
+        ? `<div class="sched-sub" style="color:var(--coral);">&#9888; below ${res.minAlt}&deg; min-alt at this time</div>` : '';
+      const sideColor = s.isFixed ? (s.side.includes('spans') ? 'color:var(--coral);font-weight:700;' : 'color:var(--gold);') : '';
+      html += `<tr>
+        <td>${utToClock(s.slotStart)}</td>
+        <td>${utToClock(s.slotEnd)}</td>
+        <td>
+          <div class="sched-name">${escapeHtml(s.name)}${fixedTag}</div>
+          <div class="sched-sub">${escapeHtml(s.raStr)} &nbsp;/&nbsp; ${escapeHtml(s.decStr)}</div>
+          ${altWarn}
+        </td>
+        <td><span class="p-chip p${s.priority}">${s.priority}</span></td>
+        <td>${s.durationMin}</td>
+        <td style="${sideColor}">${s.side}</td>
+        <td>${midAlt.toFixed(1)}</td>
+        <td>${isFinite(airmassKY(midAlt)) ? airmassKY(midAlt).toFixed(2) : '&mdash;'}</td>
+        <td style="color:${sepColor};font-weight:600;">${moonSep.toFixed(1)}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="panel">
+    <h2>Altitude over the night</h2>
+    <div class="chart-toolbar">
+      <div class="legend">
+        <span><span class="sw" style="background:var(--gold)"></span>P1</span>
+        <span><span class="sw" style="background:var(--p2)"></span>P2</span>
+        <span><span class="sw" style="background:var(--cyan)"></span>P3</span>
+        <span><span class="sw" style="background:var(--p4)"></span>P4</span>
+        <span><span class="sw" style="background:var(--p5)"></span>P5</span>
+        <span><span class="sw" style="background:#FF3B30"></span>min-alt limit</span>
+        <span><span class="sw" style="background:#8FC7EA"></span>daylight</span>
+        <span><span class="sw" style="background:#F2D24B"></span>Moon</span>
+      </div>
+      <label><input type="checkbox" id="chkShowAll" ${(res.scheduled.length+res.unscheduled.length)<=12?'checked':''}> Show unscheduled curves</label>
+    </div>
+    <div id="chartHolder"></div>
+    <div class="footnote">Bold segments mark the allocated time sector for each scheduled target (kept clear of its own meridian transit, marked &#9670;, by a ${MERIDIAN_BUFFER_MIN}-min buffer — waived for targets requiring over ${MERIDIAN_WAIVER_MIN} min); thin curves show the full altitude track. The yellow dashed curve is the Moon's altitude (low-precision lunar position, ~1 arcmin) — the Schedule table's "Moon sep" column gives the actual angular distance at each slot's midpoint (red &lt;20&deg;, amber &lt;40&deg;). Vertical cyan lines mark dusk and dawn; the background fades to light blue outside the night window to show daylight. Axis is GMT (UT).</div>
+  </div>`;
+
+  if(res.unscheduled.length>0){
+    html += `<div class="warn-box"><div class="wtitle">${res.unscheduled.length} target(s) not scheduled</div>`;
+    for(const u of res.unscheduled){
+      html += `<div class="warn-item"><b>${escapeHtml(u.name)}</b> (P${u.priority}, ${u.durationMin} min) &mdash; ${u.reason}</div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += renderPriorityTable(res);
+
+  col.innerHTML = html;
+  drawChart(res);
+  document.getElementById('chkShowAll').addEventListener('change', ()=>drawChart(res));
+}
+
+const PRIORITY_META = [
+  {v:1,label:'Critical'},
+  {v:2,label:'High'},
+  {v:3,label:'Medium'},
+  {v:4,label:'Low'},
+  {v:5,label:'Filler'},
+  {v:0,label:'Inactive — excluded from results'},
+];
+function renderPriorityTable(res){
+  let rows = '';
+  for(const pm of PRIORITY_META){
+    const inQueue = targets.filter(t=>t.priority===pm.v);
+    if(pm.v===0){
+      rows += `<tr>
+        <td><span class="p-chip p0">0</span></td>
+        <td>${pm.label}</td>
+        <td>${inQueue.length}</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+      </tr>`;
+      continue;
+    }
+    const schedRows = res.scheduled.filter(s=>s.priority===pm.v);
+    const unschedRows = res.unscheduled.filter(u=>u.priority===pm.v);
+    const allocatedMin = schedRows.reduce((sum,s)=>sum+(s.slotEnd-s.slotStart)*60,0);
+    rows += `<tr>
+      <td><span class="p-chip p${pm.v}">${pm.v}</span></td>
+      <td>${pm.label}</td>
+      <td>${inQueue.length}</td>
+      <td>${schedRows.length}</td>
+      <td>${unschedRows.length}</td>
+      <td>${allocatedMin>1e-6?fmtHM(allocatedMin/60):'&mdash;'}</td>
+    </tr>`;
+  }
+  return `<div class="panel"><h2>Priority reference</h2>
+    <table><thead><tr><th>Pri</th><th>Label</th><th>In queue</th><th>Scheduled</th><th>Unscheduled</th><th>Allocated</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="footnote">Priority 0 (Inactive) targets are excluded from every stage of the run — visibility, scheduling, and the chart — not merely deprioritised. Scheduled/Unscheduled counts reflect the most recently generated run.</div>
+  </div>`;
+}
+
+function buildPath(curve, xf, yf, minAltCut){
+  let d = '', started = false;
+  for(const p of curve){
+    if(p.alt < minAltCut){ started=false; continue; }
+    d += (started?'L':'M') + xf(p.ut).toFixed(1) + ',' + yf(p.alt).toFixed(1) + ' ';
+    started = true;
+  }
+  return d.trim();
+}
+
+function chartPalette(printMode){
+  return printMode ? {
+    bgDay:'#FFFFFF', bgTwi:'#E4E4E4', bgNight:'#CFCFCF',
+    grid:'#AAAAAA', axisText:'#000000',
+    minAlt:'#000000', duskDawn:'#000000',
+    unsched:'#777777', unschedOpacity:0.35,
+    schedDim:0.35, schedBold:1, schedText:'#000000',
+    moon:'#000000'
+  } : {
+    bgDay:'#8FC7EA', bgTwi:'#3E5C82', bgNight:'#080B14',
+    grid:'#1A2440', axisText:'#5C6785',
+    minAlt:'#FF3B30', duskDawn:'#52C7C0',
+    unsched:'#8592AD', unschedOpacity:0.16,
+    schedDim:0.30, schedBold:0.95, schedText:null, // null = use priority color
+    moon:'#F2D24B'
+  };
+}
+function drawChart(res, printMode){
+  printMode = !!printMode;
+  const holder = printMode ? null : document.getElementById('chartHolder');
+  const showAll = printMode ? true : document.getElementById('chkShowAll').checked;
+  const pal = chartPalette(printMode);
+  const W=1000, H=420, ml=46, mr=20, mt=16, mb=34;
+  const pw=W-ml-mr, ph=H-mt-mb;
+  const xMin=res.nightStartUT-DAY_PAD_H, xMax=res.nightEndUT+DAY_PAD_H;
+  const xf = ut => ml + (ut-xMin)/(xMax-xMin)*pw;
+  const yf = alt => mt + (1-Math.max(0,Math.min(90,alt))/90)*ph;
+  const colorFor = p => printMode ? '#000000' : ({1:'#E3B341',2:'#C9A5E8',3:'#52C7C0',4:'#6E8EBF',5:'#4A5578'}[p] || '#8592AD');
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;font-family:${printMode?'monospace':'var(--mono)'};">`;
+  const totalSpan = xMax - xMin;
+  const duskPct = Math.max(0, Math.min(100, (res.nightStartUT - xMin) / totalSpan * 100));
+  const dawnPct = Math.max(0, Math.min(100, (res.nightEndUT - xMin) / totalSpan * 100));
+  const blend = Math.min(6, duskPct/2, (100-dawnPct)/2, (dawnPct-duskPct)/2);
+  const gradId = printMode ? 'skygradPrint' : 'skygrad';
+  svg += `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="${pal.bgDay}"/>
+    <stop offset="${Math.max(0,duskPct-blend).toFixed(2)}%" stop-color="${pal.bgTwi}"/>
+    <stop offset="${duskPct.toFixed(2)}%" stop-color="${pal.bgNight}"/>
+    <stop offset="50%" stop-color="${pal.bgNight}"/>
+    <stop offset="${dawnPct.toFixed(2)}%" stop-color="${pal.bgNight}"/>
+    <stop offset="${Math.min(100,dawnPct+blend).toFixed(2)}%" stop-color="${pal.bgTwi}"/>
+    <stop offset="100%" stop-color="${pal.bgDay}"/>
+  </linearGradient></defs>`;
+  svg += `<rect x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="url(#${gradId})" stroke="${printMode?'#000':'none'}" stroke-width="${printMode?1:0}" rx="4"/>`;
+
+  for(let a=0; a<=90; a+=15){
+    svg += `<line x1="${ml}" y1="${yf(a)}" x2="${ml+pw}" y2="${yf(a)}" stroke="${pal.grid}" stroke-width="1"/>`;
+    svg += `<text x="${ml-8}" y="${yf(a)+3}" text-anchor="end" font-size="10" fill="${pal.axisText}">${a}&deg;</text>`;
+  }
+  svg += `<line x1="${ml}" y1="${yf(res.minAlt)}" x2="${ml+pw}" y2="${yf(res.minAlt)}" stroke="${pal.minAlt}" stroke-width="2.4" stroke-dasharray="9 6" opacity="0.95"/>`;
+  svg += `<text x="${ml+pw-6}" y="${yf(res.minAlt)-7}" text-anchor="end" font-size="11" font-weight="700" fill="${pal.minAlt}">MIN ALT ${res.minAlt}&deg;</text>`;
+
+  const hourStart = Math.ceil(xMin);
+  for(let h=hourStart; h<=xMax; h++){
+    const xp = xf(h);
+    svg += `<line x1="${xp}" y1="${mt}" x2="${xp}" y2="${mt+ph}" stroke="${pal.grid}" stroke-width="1"/>`;
+    svg += `<text x="${xp}" y="${mt+ph+16}" text-anchor="middle" font-size="10" fill="${pal.axisText}">${utToClock(h).replace(' UT','')}</text>`;
+  }
+  svg += `<line x1="${xf(res.nightStartUT)}" y1="${mt}" x2="${xf(res.nightStartUT)}" y2="${mt+ph}" stroke="${pal.duskDawn}" stroke-width="1" opacity="0.5"/>`;
+  svg += `<line x1="${xf(res.nightEndUT)}" y1="${mt}" x2="${xf(res.nightEndUT)}" y2="${mt+ph}" stroke="${pal.duskDawn}" stroke-width="1" opacity="0.5"/>`;
+
+  // Moon — reference curve only, never scheduled; yellow dashed on screen, labelled black dashes in print
+  if(res.moonCurve && res.moonCurve.length>1){
+    const moonPath = buildPath(res.moonCurve, xf, yf, 0);
+    if(moonPath){
+      svg += `<path d="${moonPath}" fill="none" stroke="${pal.moon}" stroke-width="1.1" stroke-dasharray="${printMode?'1.5 3.5':'5 4'}" opacity="0.7"/>`;
+      let best=null;
+      for(const p of res.moonCurve){ if(p.ut>=xMin && p.ut<=xMax && (!best || p.alt>best.alt)) best=p; }
+      if(best) svg += `<text x="${xf(best.ut).toFixed(1)}" y="${(yf(best.alt)-9).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${pal.moon}">Moon</text>`;
+    }
+  }
+
+  const items = [...res.scheduled.map(t=>({...t,isSched:true})), ...res.unscheduled.map(t=>({...t,isSched:false}))];
+  for(const t of items){
+    if(!t.curve) continue;
+    if(!t.isSched && !showAll) continue;
+    const col = t.isSched ? colorFor(t.priority) : pal.unsched;
+    const dashAttr = t.isSched ? '' : 'stroke-dasharray="3 3"';
+    const dimPath = buildPath(t.curve, xf, yf, 0);
+    if(dimPath) svg += `<path d="${dimPath}" fill="none" stroke="${col}" stroke-width="1.1" opacity="${t.isSched?pal.schedDim:pal.unschedOpacity}" ${dashAttr}/>`;
+    if(t.isSched){
+      const seg = t.curve.filter(p=>p.ut>=t.slotStart && p.ut<=t.slotEnd);
+      if(seg.length>1){
+        const segPath = buildPath(seg, xf, yf, -90);
+        svg += `<path d="${segPath}" fill="none" stroke="${col}" stroke-width="2.6" opacity="${pal.schedBold}"/>`;
+        const mid = seg[Math.floor(seg.length/2)];
+        svg += `<text x="${xf(mid.ut).toFixed(1)}" y="${(yf(mid.alt)-8).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="${pal.schedText||col}">${escapeHtml(t.name).slice(0,20)}</text>`;
+      }
+      if(t.window && t.window.transitUT>=xMin && t.window.transitUT<=xMax){
+        const tx=xf(t.window.transitUT), ty=yf(t.window.maxAlt);
+        svg += `<path d="M ${tx.toFixed(1)},${(ty-4).toFixed(1)} L ${(tx+4).toFixed(1)},${ty.toFixed(1)} L ${tx.toFixed(1)},${(ty+4).toFixed(1)} L ${(tx-4).toFixed(1)},${ty.toFixed(1)} Z" fill="${col}" opacity="0.55"/>`;
+      }
+    }
+  }
+  svg += `</svg>`;
+  if(holder) holder.innerHTML = svg;
+  return svg;
+}
+
+document.getElementById('btnExportCsv').addEventListener('click', ()=>{
+  if(!lastResult || lastResult.scheduled.length===0){ setStatus('Generate a schedule first.', true); return; }
+  const dateVal = document.getElementById('cfgDate').value;
+  const nautStart = utToClock(lastResult.ev.nauticalDusk).replace(' UT','');
+  const nautEnd = utToClock(lastResult.ev.nauticalDawn).replace(' UT','');
+  let csv = `Flarestar Observatory — Schedule for ${dateVal} (UT)\n`;
+  csv += `Nautical twilight (start,end),${nautStart},${nautEnd}\n`;
+  csv += 'Start_UT,End_UT,Target,Priority,Duration_min,Side,Alt_mid_deg,Airmass_mid,Moon_sep_deg\n';
+  for(const s of lastResult.scheduled){
+    const mid=(s.slotStart+s.slotEnd)/2;
+    const midAlt = altAtUT(s, mid, lastResult);
+    const am = airmassKY(midAlt);
+    const moonSep = moonSepAtUT(s, mid, lastResult);
+    csv += `${utToClock(s.slotStart).replace(' UT','')},${utToClock(s.slotEnd).replace(' UT','')},"${s.name.replace(/"/g,'""')}",${s.priority},${s.durationMin},${s.side},${midAlt.toFixed(1)},${isFinite(am)?am.toFixed(2):''},${moonSep.toFixed(1)}\n`;
+  }
+  csv += `\n# ${APP_VERSION} — (c) Flarestar Observatory. All rights reserved.\n`;
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `flarestar-schedule-${dateVal}-UT.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+function buildPrintContentHTML(res, dateVal){
+  const chartSvg = drawChart(res, true); // printMode=true, black-on-white, returned not injected on screen
+  let rows = '';
+  for(const s of res.scheduled){
+    const mid=(s.slotStart+s.slotEnd)/2;
+    const midAlt = altAtUT(s, mid, res);
+    const am = airmassKY(midAlt);
+    const moonSep = moonSepAtUT(s, mid, res);
+    rows += `<tr>
+      <td>${utToClock(s.slotStart)}</td><td>${utToClock(s.slotEnd)}</td>
+      <td>${escapeHtml(s.name)} (${escapeHtml(s.raStr)} / ${escapeHtml(s.decStr)})</td>
+      <td>${s.priority}</td><td>${s.durationMin}</td><td>${s.side}</td>
+      <td>${midAlt.toFixed(1)}</td><td>${isFinite(am)?am.toFixed(2):'—'}</td><td>${moonSep.toFixed(1)}</td>
+    </tr>`;
+  }
+  const nautStart = utToClock(res.ev.nauticalDusk), nautEnd = utToClock(res.ev.nauticalDawn);
+  return `
+    <h1>Flarestar Observatory — Schedule for ${dateVal} (UT)</h1>
+    <p>San Ġwann, Malta · Night window ${utToClock(res.nightStartUT)}&ndash;${utToClock(res.nightEndUT)} (${res.twilight} twilight) · Nautical twilight ${nautStart}&ndash;${nautEnd} · Generated by the Visibility &amp; Scheduling Console</p>
+    <table>
+      <thead><tr><th>Start</th><th>End</th><th>Target</th><th>Pri</th><th>Dur (min)</th><th>Side</th><th>Alt@mid</th><th>Airmass</th><th>Moon sep</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <h2>Altitude over the night</h2>
+    ${chartSvg}
+    <div style="margin-top:16px;padding-top:8px;border-top:1px solid #ccc;font-size:9px;color:#666;text-align:center;">${APP_VERSION} &middot; &copy; Flarestar Observatory. All rights reserved.</div>
+  `;
+}
+
+document.getElementById('btnPrint').addEventListener('click', ()=>{
+  if(!lastResult || lastResult.scheduled.length===0){ setStatus('Generate a schedule first.', true); return; }
+  const res = lastResult;
+  const dateVal = document.getElementById('cfgDate').value;
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = buildPrintContentHTML(res, dateVal);
+  window.print();
+});
+
+document.getElementById('btnDownloadPrintable').addEventListener('click', ()=>{
+  if(!lastResult || lastResult.scheduled.length===0){ setStatus('Generate a schedule first.', true); return; }
+  const res = lastResult;
+  const dateVal = document.getElementById('cfgDate').value;
+  const bodyContent = buildPrintContentHTML(res, dateVal);
+  // Self-contained standalone HTML: black-on-white, print CSS baked in, no
+  // dependency on the running app — opens in any browser, and the
+  // browser's own Print > Save as PDF produces the PDF from there. This
+  // avoids adding a PDF-generation library (and its network dependency)
+  // just to reach an outcome the OS/browser print dialog already gives
+  // for free from a plain HTML file.
+  const standalone = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flarestar Observatory — Schedule ${dateVal} (UT)</title>
+<style>
+  body{background:#fff;color:#000;font-family:ui-monospace,monospace;padding:24px;max-width:900px;margin:0 auto;}
+  h1{font-size:18px;margin:0 0 6px;}
+  h2{font-size:14px;margin:20px 0 8px;}
+  p{font-size:12px;color:#333;margin:0 0 16px;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  th{text-align:left;border-bottom:1px solid #000;padding:5px 7px;}
+  td{padding:5px 7px;border-bottom:1px solid #ccc;}
+  svg{max-width:100%;height:auto;}
+  @media print{ body{padding:0;} }
+</style>
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`;
+  const blob = new Blob([standalone], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `flarestar-schedule-${dateVal}-UT-printable.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus('Downloaded — open the file and use your browser\u2019s Print \u2192 Save as PDF to get a PDF.', false);
+});
+
+setDefaultDate();
+loadState();
+</script>
+</body>
+</html>
